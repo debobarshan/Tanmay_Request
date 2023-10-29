@@ -1,0 +1,239 @@
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidents]    Script Date: 27-10-2023 22:42:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidents](
+        @p_incident_no  VARCHAR(100),
+        @p_pagenum      INT,
+        @p_pagesize     INT,
+        @p_user         VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_countinc INT, @l_totalRecCount INT, @l_branch VARCHAR(3), @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+
+  SET NOCOUNT ON;
+  SET @l_log = 'iNSIDE PR_GET_INCIDENTS with incident no as: ' + @p_incident_no + ' FOR USER: ' + @p_user
+  EXEC LOGIT @l_log
+
+  BEGIN TRY
+    SELECT @l_branch = (SELECT BRANCH_CODE
+                          FROM [dbo].[TB_USER_PROFILE]
+                         WHERE user_name = @p_user);
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 33 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+
+  IF (@p_incident_no IS NULL OR @p_incident_no ='null')
+    BEGIN
+      EXEC LOGIT 'Inside Null'
+      IF (@l_branch ='202')
+        BEGIN
+          SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                       FROM vw_Incident_dets
+                                      WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                      FROM tb_user_profile
+                                                                                     WHERE user_name = @p_user)));
+          BEGIN TRY
+            SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                                , INCIDENT_NO                                    AS 'incidentNo'
+                                                , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                                , STATUS                                         AS 'status'
+                                                , CUSTOMER_NAME                                  AS 'customerName'
+                                                , COALESCE(action, 'Not Taken')                  AS 'action'
+                                                , CURRENT_STAGE                                  AS 'currentStage'
+                                                , CUSTOMER_ID                                    AS 'customerId'
+                                                , FINAL_COMMENTS                                 AS 'finalComments'
+                                                , ASSIGNED_TO                                    AS 'assignedTo'
+                                                , REPORTED_BY                                    AS 'reportedBy'
+                                                , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                             FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                             FROM vw_Incident_dets A
+                                                            WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                                            FROM tb_user_profile
+                                                                                                           WHERE user_name = @p_user))
+                                                            --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                           ) A
+                                                   ) B
+                                            WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum+1) * @p_pagesize
+                                            --ORDER BY REPORTED_DATE DESC
+                                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                           ) AS 'reportData'
+                                        , @l_totalRecCount AS 'totalRecords'
+                                      FOR JSON PATH
+                                   );
+          END TRY
+          BEGIN CATCH
+            SET @l_err_num = ERROR_NUMBER()
+            SET @l_err_msg = ERROR_MESSAGE()
+            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            EXEC LOGIT @l_log
+          END CATCH;
+        END
+      ELSE
+        BEGIN
+          SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                       FROM vw_Incident_dets
+                                      WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                      FROM tb_user_profile
+                                                                                     WHERE user_name = @p_user))
+                                        AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                           FROM tb_user_profile
+                                                          WHERE user_name = @p_user));
+          BEGIN TRY
+            SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                                , INCIDENT_NO                                    AS 'incidentNo'
+                                                , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                                , STATUS                                         AS 'status'
+                                                , CUSTOMER_NAME                                  AS 'customerName'
+                                                , COALESCE(action, 'Not Taken')                  AS 'action'
+                                                , CURRENT_STAGE                                  AS 'currentStage'
+                                                , CUSTOMER_ID                                    AS 'customerId'
+                                                , FINAL_COMMENTS                                 AS 'finalComments'
+                                                , ASSIGNED_TO                                    AS 'assignedTo'
+                                                , REPORTED_BY                                    AS 'reportedBy'
+                                                , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                             FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                             FROM vw_Incident_dets A
+                                                            WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                                            FROM tb_user_profile
+                                                                                                           WHERE user_name = @p_user))
+                                                              AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                                                 FROM tb_user_profile
+                                                                                WHERE user_name = @p_user)
+                                                            --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                           ) A
+                                                   ) B
+                                            WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum+1) * @p_pagesize
+                                            --ORDER BY REPORTED_DATE DESC
+                                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                           ) AS 'reportData'
+                                        , @l_totalRecCount AS 'totalRecords'
+                                      FOR JSON PATH
+                                   );
+          END TRY
+          BEGIN CATCH
+            SET @l_err_num = ERROR_NUMBER()
+            SET @l_err_msg = ERROR_MESSAGE()
+            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            EXEC LOGIT @l_log
+          END CATCH;
+        END
+    END
+  ELSE
+    BEGIN
+      SET @l_log = 'Inside Not Null l_branch: ' + @l_branch
+      EXEC LOGIT @l_log
+      IF (@l_branch ='202')
+        BEGIN
+          SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                       FROM vw_Incident_dets
+                                      WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                      FROM tb_user_profile
+                                                                                     WHERE user_name = @p_user))
+                                        AND INCIDENT_NO = @p_incident_no);
+          BEGIN TRY
+            SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                                , INCIDENT_NO                                    AS 'incidentNo'
+                                                , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                                , STATUS                                         AS 'status'
+                                                , CUSTOMER_NAME                                  AS 'customerName'
+                                                , COALESCE(action, 'Not Taken')                  AS 'action'
+                                                , CURRENT_STAGE                                  AS 'currentStage'
+                                                , CUSTOMER_ID                                    AS 'customerId'
+                                                , FINAL_COMMENTS                                 AS 'finalComments'
+                                                , ASSIGNED_TO                                    AS 'assignedTo'
+                                                , REPORTED_BY                                    AS 'reportedBy'
+                                                , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                             FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                             FROM vw_Incident_dets A
+                                                            WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                                            FROM tb_user_profile
+                                                                                                           WHERE user_name = @p_user))
+                                                              AND INCIDENT_NO = @p_incident_no
+                                                            --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                           ) A
+                                                   ) B
+                                            WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum+1) * @p_pagesize
+                                            --ORDER BY REPORTED_DATE DESC
+                                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                           ) AS 'reportData'
+                                        , @l_totalRecCount AS 'totalRecords'
+                                      FOR JSON PATH
+                                   );
+          END TRY
+          BEGIN CATCH
+            SET @l_err_num = ERROR_NUMBER()
+            SET @l_err_msg = ERROR_MESSAGE()
+            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            EXEC LOGIT @l_log
+          END CATCH;
+        END
+      ELSE
+        BEGIN
+          SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                       FROM vw_Incident_dets
+                                      WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                      FROM tb_user_profile
+                                                                                     WHERE user_name = @p_user))
+                                        AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                           FROM tb_user_profile
+                                                          WHERE user_name = @p_user)
+                                        AND INCIDENT_NO = @p_incident_no);
+          BEGIN TRY
+            SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                                , INCIDENT_NO                                    AS 'incidentNo'
+                                                , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                                , STATUS                                         AS 'status'
+                                                , CUSTOMER_NAME                                  AS 'customerName'
+                                                , COALESCE(action, 'Not Taken')                  AS 'action'
+                                                , CURRENT_STAGE                                  AS 'currentStage'
+                                                , CUSTOMER_ID                                    AS 'customerId'
+                                                , FINAL_COMMENTS                                 AS 'finalComments'
+                                                , ASSIGNED_TO                                    AS 'assignedTo'
+                                                , REPORTED_BY                                    AS 'reportedBy'
+                                                , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                             FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                             FROM vw_Incident_dets A
+                                                            WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
+                                                                                                            FROM tb_user_profile
+                                                                                                           WHERE user_name = @p_user))
+                                                              AND INCIDENT_NO = @p_incident_no
+                                                              AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                                                 FROM tb_user_profile
+                                                                                WHERE user_name = @p_user)
+                                                            --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                           ) A
+                                                   ) B
+                                            WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum+1) * @p_pagesize
+                                            --ORDER BY REPORTED_DATE DESC
+                                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                           ) AS 'reportData'
+                                        , @l_totalRecCount AS 'totalRecords'
+                                      FOR JSON PATH
+                                   );
+          END TRY
+          BEGIN CATCH
+            SET @l_err_num = ERROR_NUMBER()
+            SET @l_err_msg = ERROR_MESSAGE()
+            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            EXEC LOGIT @l_log
+          END CATCH;
+        END
+    END
+END
+GO
