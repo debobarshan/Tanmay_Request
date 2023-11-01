@@ -17,7 +17,6 @@ ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidents](
 AS
   DECLARE @l_countinc INT, @l_totalRecCount INT, @l_branch VARCHAR(3), @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
 BEGIN
-
   SET NOCOUNT ON;
   SET @l_log = 'iNSIDE PR_GET_INCIDENTS with incident no as: ' + @p_incident_no + ' FOR USER: ' + @p_user
   EXEC LOGIT @l_log
@@ -298,7 +297,7 @@ ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_notif](
         @p_user         VARCHAR(200),
         @p_current_user VARCHAR(200),
         @p_recordset    VARCHAR(MAX) OUT
-		)
+        )
 AS
   DECLARE @l_countinc INT, @l_totalRecCount INT, @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
 BEGIN
@@ -310,12 +309,12 @@ BEGIN
                  , @p_text = @l_log
   BEGIN TRY
     SELECT @p_recordset = (SELECT notif_id   AS 'notificationId'
-	                            , notif_text AS 'notificationMessage'
-								, recepient  AS 'recepientMail'
-							 FROM tb_incident_notif
+                                , notif_text AS 'notificationMessage'
+                                , recepient  AS 'recepientMail'
+                             FROM tb_incident_notif
                             WHERE COALESCE(CONSUMED, 'N') = 'N'
-							  FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                       );
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
   END TRY
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
@@ -323,5 +322,483 @@ BEGIN
     SET @l_log = 'Line # 322 pr_get_incident_notif>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
     EXEC LOGIT @l_log
   END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_history]    Script Date: 1-11-2023 00:04:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_history](
+        @p_from_Date    VARCHAR(25),
+        @p_to_Date      VARCHAR(25),
+        @p_status       VARCHAR(5),
+        @p_pagenum      INT,
+        @p_pagesize     INT,
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_countinc INT, @l_totalRecCount INT, @l_branch  VARCHAR(3), @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET NOCOUNT ON;
+  SET @l_log = 'iNSIDE PR_GET_INCIDENT_HISTORY with p_status as: ' + @p_status + ' FROM DATE: ' + @p_from_Date + ' TO DATE: ' + @p_to_Date
+  EXEC LOGIT @l_log
+  SET @l_log = 'Getting Inc History with p_status as: ' + @p_status + ' FROM DATE: ' + @p_from_Date + ' TO DATE: ' + @p_to_Date
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+
+  BEGIN TRY
+    SELECT @l_branch = (SELECT BRANCH_CODE
+                          FROM [dbo].[TB_USER_PROFILE]
+                         WHERE user_name = @p_current_user);
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 365 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+
+  IF(@p_status <>'All')
+  BEGIN
+    IF (@l_branch ='202')
+    BEGIN
+      SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                  FROM vw_Incident_hist
+                                 WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                   AND STATUS = @p_status
+                                 );
+      BEGIN TRY
+        SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                              AS 'incidentType'
+                                            , INCIDENT_NO                                                AS 'incidentNo'
+                                            , REPORTED_DATE                                              AS 'incidentRaiseTime'
+                                            , STATUS                                                     AS 'status'
+                                            , CUSTOMER_NAME                                              AS 'customerName'
+                                            , ACTION                                                     AS 'action'
+                                            , CURRENT_STAGE                                              AS 'currentStage'
+                                            , CUSTOMER_ID                                                AS 'customerId'
+                                            , FINAL_COMMENTS                                             AS 'finalComments'
+                                            , ASSIGNED_TO                                                AS 'assignedTo'
+                                            , REPORTED_BY                                                AS 'reportedBy'
+                                            , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col'
+                                         FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                 FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col_1'
+                                                         FROM vw_Incident_hist A
+                                                        WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                          AND STATUS = @p_status
+                                                     --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                       ) A
+                                               ) B
+                                        WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                        --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                          FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                       ) AS 'reportData'
+                                    , @l_totalRecCount AS 'totalRecords'
+                                  FOR JSON PATH
+                               );
+      END TRY
+      BEGIN CATCH
+        SET @l_err_num = ERROR_NUMBER()
+        SET @l_err_msg = ERROR_MESSAGE()
+        SET @l_log = 'Line # 408 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        EXEC LOGIT @l_log
+      END CATCH;
+    END
+    ELSE
+    BEGIN
+      SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                  FROM vw_Incident_hist
+                                 WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                   AND STATUS = @p_status
+                                   AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                      FROM tb_user_profile
+                                                     WHERE user_name = @p_current_user)
+                                 );
+      BEGIN TRY
+        SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                              AS 'incidentType'
+                                            , INCIDENT_NO                                                AS 'incidentNo'
+                                            , REPORTED_DATE                                              AS 'incidentRaiseTime'
+                                            , STATUS                                                     AS 'status'
+                                            , CUSTOMER_NAME                                              AS 'customerName'
+                                            , ACTION                                                     AS 'action'
+                                            , CURRENT_STAGE                                              AS 'currentStage'
+                                            , CUSTOMER_ID                                                AS 'customerId'
+                                            , FINAL_COMMENTS                                             AS 'finalComments'
+                                            , ASSIGNED_TO                                                AS 'assignedTo'
+                                            , REPORTED_BY                                                AS 'reportedBy'
+                                            , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col'
+                                         FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                 FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col_1'
+                                                         FROM vw_Incident_hist A
+                                                        WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                          AND STATUS = @p_status
+                                                          AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                                             FROM tb_user_profile
+                                                                            WHERE user_name = @p_current_user)
+                                                     --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                       ) A
+                                               ) B
+                                        WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                        --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                          FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                       ) AS 'reportData'
+                                    , @l_totalRecCount AS 'totalRecords'
+                                  FOR JSON PATH
+                               );
+      END TRY
+      BEGIN CATCH
+        SET @l_err_num = ERROR_NUMBER()
+        SET @l_err_msg = ERROR_MESSAGE()
+        SET @l_log = 'Line # 455 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        EXEC LOGIT @l_log
+      END CATCH;
+    END
+  END
+  ELSE
+  BEGIN
+    IF (@l_branch ='202')
+    BEGIN
+      SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                   FROM vw_Incident_hist
+                                  WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                 );
+      BEGIN TRY
+        SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                              AS 'incidentType'
+                                            , INCIDENT_NO                                                AS 'incidentNo'
+                                            , REPORTED_DATE                                              AS 'incidentRaiseTime'
+                                            , STATUS                                                     AS 'status'
+                                            , CUSTOMER_NAME                                              AS 'customerName'
+                                            , ACTION                                                     AS 'action'
+                                            , CURRENT_STAGE                                              AS 'currentStage'
+                                            , CUSTOMER_ID                                                AS 'customerId'
+                                            , FINAL_COMMENTS                                             AS 'finalComments'
+                                            , ASSIGNED_TO                                                AS 'assignedTo'
+                                            , REPORTED_BY                                                AS 'reportedBy'
+                                            , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col'
+                                         FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                 FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col_1'
+                                                         FROM vw_Incident_hist A
+                                                        WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                          AND STATUS = @p_status
+                                                     --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                       ) A
+                                               ) B
+                                        WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                        --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                          FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                       ) AS 'reportData'
+                                    , @l_totalRecCount AS 'totalRecords'
+                                  FOR JSON PATH
+                               );
+      END TRY
+      BEGIN CATCH
+        SET @l_err_num = ERROR_NUMBER()
+        SET @l_err_msg = ERROR_MESSAGE()
+        SET @l_log = 'Line # 496 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        EXEC LOGIT @l_log
+      END CATCH;
+    END
+    ELSE
+    BEGIN
+      SELECT @l_totalRecCount = (SELECT COUNT(*)
+                                   FROM vw_Incident_hist
+                                  WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                    AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                       FROM tb_user_profile
+                                                      WHERE user_name = @p_current_user)
+                                 );
+      BEGIN TRY
+        SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                              AS 'incidentType'
+                                            , INCIDENT_NO                                                AS 'incidentNo'
+                                            , REPORTED_DATE                                              AS 'incidentRaiseTime'
+                                            , STATUS                                                     AS 'status'
+                                            , CUSTOMER_NAME                                              AS 'customerName'
+                                            , ACTION                                                     AS 'action'
+                                            , CURRENT_STAGE                                              AS 'currentStage'
+                                            , CUSTOMER_ID                                                AS 'customerId'
+                                            , FINAL_COMMENTS                                             AS 'finalComments'
+                                            , ASSIGNED_TO                                                AS 'assignedTo'
+                                            , REPORTED_BY                                                AS 'reportedBy'
+                                            , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col'
+                                         FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                                 FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE,INCIDENT_NO DESC) AS 'ord_col_1'
+                                                         FROM vw_Incident_hist A
+                                                        WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                          AND AC_BRANCH = (SELECT BRANCH_CODE
+                                                                             FROM tb_user_profile
+                                                                            WHERE user_name = @p_current_user)
+                                                     --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                                       ) A
+                                               ) B
+                                        WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                        --ORDER BY REPORTED_DATE,INCIDENT_NO DESC
+                                          FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                       ) AS 'reportData'
+                                    , @l_totalRecCount AS 'totalRecords'
+                                  FOR JSON PATH
+                               );
+      END TRY
+      BEGIN CATCH
+        SET @l_err_num = ERROR_NUMBER()
+        SET @l_err_msg = ERROR_MESSAGE()
+        SET @l_log = 'Line # 541 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        EXEC LOGIT @l_log
+      END CATCH;
+    END
+  END
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_inc_cif_data]    Script Date: 1-11-2023 19:51:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_inc_cif_data](
+        @p_from_Date      VARCHAR(30),
+        @p_to_Date        VARCHAR(30),
+        @p_status         VARCHAR(5),
+        @p_cif            VARCHAR(50),
+        @p_pagenum        INT,
+        @p_pagesize       INT,
+        @p_totalRecCount  INT OUT,
+        @p_recordset      VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET NOCOUNT ON;
+  EXEC LOGIT 'iNSIDE PR_GET_INC_CIF_DATA'
+
+  IF (@p_status ='null')
+  BEGIN
+    SELECT @p_totalRecCount = (SELECT COUNT(*)
+                                 FROM vw_Incident_hist
+                                WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                  AND STATUS              = @p_status
+                                  AND CUSTOMER_ID         = @p_cif
+                               );
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                          , INCIDENT_NO                                    AS 'incidentNo'
+                                          , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                          , STATUS                                         AS 'status'
+                                          , CUSTOMER_NAME                                  AS 'customerName'
+                                          , ACTION                                         AS 'action'
+                                          , CURRENT_STAGE                                  AS 'currentStage'
+                                          , CUSTOMER_ID                                    AS 'customerId'
+                                          , FINAL_COMMENTS                                 AS 'finalComments'
+                                          , ASSIGNED_TO                                    AS 'assignedTo'
+                                          , REPORTED_BY                                    AS 'reportedBy'
+                                          , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                       FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                               FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col_1'
+                                                       FROM vw_Incident_hist A
+                                                      WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                        AND CUSTOMER_ID = @p_cif
+                                                   --ORDER BY REPORTED_DATE DESC
+                                                     ) A
+                                             ) B
+                                      WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                      --ORDER BY REPORTED_DATE
+                                        FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                     ) AS 'reportData'
+                                  , @p_totalRecCount AS 'totalRecords'
+                                FOR JSON PATH
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+  ELSE
+  BEGIN
+    SELECT @p_totalRecCount = (SELECT COUNT(*)
+                                 FROM vw_Incident_hist
+                                WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                  AND STATUS              = @p_status
+                                  AND CUSTOMER_ID         = @p_cif
+                               );
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                                  AS 'incidentType'
+                                          , INCIDENT_NO                                    AS 'incidentNo'
+                                          , REPORTED_DATE                                  AS 'incidentRaiseTime'
+                                          , STATUS                                         AS 'status'
+                                          , CUSTOMER_NAME                                  AS 'customerName'
+                                          , ACTION                                         AS 'action'
+                                          , CURRENT_STAGE                                  AS 'currentStage'
+                                          , CUSTOMER_ID                                    AS 'customerId'
+                                          , FINAL_COMMENTS                                 AS 'finalComments'
+                                          , ASSIGNED_TO                                    AS 'assignedTo'
+                                          , REPORTED_BY                                    AS 'reportedBy'
+                                          , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
+                                       FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                               FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col_1'
+                                                       FROM vw_Incident_hist A
+                                                      WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                        AND STATUS = @p_status
+                                                        AND CUSTOMER_ID = @p_cif
+                                                   --ORDER BY REPORTED_DATE DESC
+                                                     ) A
+                                             ) B
+                                      WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                      --ORDER BY REPORTED_DATE
+                                        FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                     ) AS 'reportData'
+                                  , @p_totalRecCount AS 'totalRecords'
+                                FOR JSON PATH
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 667 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+  EXEC LOGIT 'OUTSIDE PR_GET_INC_CIF_DATA'
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_inc_acc_data]    Script Date: 2-11-2023 00:11:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_inc_acc_data](
+        @p_from_Date     VARCHAR(30),
+        @p_to_Date       VARCHAR(30),
+        @p_status        VARCHAR(5),
+        @p_cif           VARCHAR(50),
+        @p_account       VARCHAR(50),
+        @p_pagenum       INT,
+        @p_pagesize      INT,
+        @p_totalRecCount INT          OUT,
+        @p_recordset     VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET NOCOUNT ON;
+  SET @l_log = 'iNSIDE PR_GET_INC_ACC_DATA with cif: ' + @p_cif + ' acc: ' + @p_account + ' TO DATE:' + @p_to_Date + ' FRM DATE: ' + @p_from_Date + ' STATUS:' + @p_status
+  EXEC LOGIT @l_log
+  SET @l_log = 'PAGEnUM: ' + @p_pagenum + ' PAGESIZE: ' + @p_pagesize
+  EXEC LOGIT @l_log
+
+  IF (@p_status ='null')
+  BEGIN
+    EXEC LOGIT 'QUERY1'
+    SELECT @p_totalRecCount = (SELECT COUNT(*)
+                                 FROM vw_Incident_hist
+                                WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                  AND CUSTOMER_ID         = @p_cif
+                                  AND ACCOUNT_NUMBER      = @p_account
+                               );
+    SET @l_log = 'p_totalRecCount: ' + @p_totalRecCount
+    EXEC LOGIT @l_log
+
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                             AS 'incidentType'
+                                          , INCIDENT_NO                               AS 'incidentNo'
+                                          , REPORTED_DATE                             AS 'incidentRaiseTime'
+                                          , STATUS                                    AS 'status'
+                                          , CUSTOMER_NAME                             AS 'customerName'
+                                          , ACTION                                    AS 'action'
+                                          , CURRENT_STAGE                             AS 'currentStage'
+                                          , CUSTOMER_ID                               AS 'customerId'
+                                          , FINAL_COMMENTS                            AS 'finalComments'
+                                          , ASSIGNED_TO                               AS 'assignedTo'
+                                          , REPORTED_BY                               AS 'reportedBy'
+                                          , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE) AS 'ord_col'
+                                       FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                               FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col_1'
+                                                       FROM vw_Incident_hist A
+                                                      WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                        AND CUSTOMER_ID                                 = @p_cif
+                                                        AND ACCOUNT_NUMBER                              = @p_account
+                                                   --ORDER BY REPORTED_DATE DESC
+                                                     ) A
+                                             ) B
+                                      WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                      --ORDER BY REPORTED_DATE
+                                        FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                     ) AS 'reportData'
+                                  ,  @p_totalRecCount AS 'totalRecords'
+                                FOR JSON PATH
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+  ELSE
+  BEGIN
+    EXEC LOGIT 'QUERY2'
+    SELECT @p_totalRecCount = (SELECT COUNT(*)
+                                 FROM vw_Incident_hist
+                                WHERE REPORTED_DATE BETWEEN @p_from_Date AND @p_to_Date
+                                  AND STATUS              = @p_status
+                                  AND CUSTOMER_ID         = @p_cif
+                                  AND ACCOUNT_NUMBER      = @p_account
+                               );
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT (SELECT INCIDENT_TYPE                             AS 'incidentType'
+                                          , INCIDENT_NO                               AS 'incidentNo'
+                                          , REPORTED_DATE                             AS 'incidentRaiseTime'
+                                          , STATUS                                    AS 'status'
+                                          , CUSTOMER_NAME                             AS 'customerName'
+                                          , ACTION                                    AS 'action'
+                                          , CURRENT_STAGE                             AS 'currentStage'
+                                          , CUSTOMER_ID                               AS 'customerId'
+                                          , FINAL_COMMENTS                            AS 'finalComments'
+                                          , ASSIGNED_TO                               AS 'assignedTo'
+                                          , REPORTED_BY                               AS 'reportedBy'
+                                          , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE) AS 'ord_col'
+                                       FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                                               FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col_1'
+                                                       FROM vw_Incident_hist A
+                                                      WHERE TRY_CONVERT(DATE, REPORTED_DATE, 102) BETWEEN TRY_CONVERT(DATE, @p_from_Date, 102) AND TRY_CONVERT(DATE, @p_to_Date, 102)
+                                                        AND STATUS                                      = @p_status
+                                                        AND CUSTOMER_ID                                 = @p_cif
+                                                        AND ACCOUNT_NUMBER                              = @p_account
+                                                   --ORDER BY REPORTED_DATE DESC
+                                                     ) A
+                                             ) B
+                                      WHERE ROW_NUM BETWEEN (@p_pagenum) * @p_pagesize + 1 AND (@p_pagenum + 1) * @p_pagesize
+                                      --ORDER BY REPORTED_DATE
+                                        FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                     ) AS 'reportData'
+                                  ,  @p_totalRecCount AS 'totalRecords'
+                                FOR JSON PATH
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+  EXEC LOGIT 'OUTSIDE PR_GET_INC_ACC_DATA'
 END
 GO
