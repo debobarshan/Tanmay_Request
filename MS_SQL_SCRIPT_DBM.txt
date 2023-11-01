@@ -58,7 +58,7 @@ BEGIN
                                                 , REPORTED_BY                                    AS 'reportedBy'
                                                 , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
                                              FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
-                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col_1
                                                              FROM vw_Incident_dets A
                                                             WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
                                                                                                             FROM tb_user_profile
@@ -105,7 +105,7 @@ BEGIN
                                                 , REPORTED_BY                                    AS 'reportedBy'
                                                 , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
                                              FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
-                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col_1
                                                              FROM vw_Incident_dets A
                                                             WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
                                                                                                             FROM tb_user_profile
@@ -127,7 +127,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 130 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -158,7 +158,7 @@ BEGIN
                                                 , REPORTED_BY                                    AS 'reportedBy'
                                                 , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
                                              FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
-                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col_1
                                                              FROM vw_Incident_dets A
                                                             WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
                                                                                                             FROM tb_user_profile
@@ -178,7 +178,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 181 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -207,7 +207,7 @@ BEGIN
                                                 , REPORTED_BY                                    AS 'reportedBy'
                                                 , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS 'ord_col'
                                              FROM (SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
-                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col
+                                                     FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE, INCIDENT_NO DESC) AS ord_col_1
                                                              FROM vw_Incident_dets A
                                                             WHERE (ASSIGNED_TO IS NULL OR ASSIGNED_TO IN (SELECT role_id
                                                                                                             FROM tb_user_profile
@@ -230,10 +230,98 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 233 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
     END
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidents_by_no]    Script Date: 31-10-2023 20:35:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidents_by_no](
+        @p_incident_no VARCHAR(100),
+        @p_pagenum    INT,
+        @p_pagesize   INT,
+        @p_user       VARCHAR(200),
+        @p_recordset  VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_countinc INT, @l_totalRecCount INT, @l_branch VARCHAR(3), @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET NOCOUNT ON;
+  SET @l_log = 'iNSIDE pr_get_incidents_by_no with incident no as: ' + @p_incident_no + ' FOR USER: ' + @p_user
+  EXEC LOGIT @l_log
+
+  BEGIN TRY
+    SELECT @p_recordset = (SELECT a.incident_no                          AS 'incidentNo'
+                                , (SELECT RULE_DESC
+                                     FROM TB_RULE_GROUP
+                                    WHERE RULE_GROUP_ID = rule_violated) AS 'ruleName'
+                                , COALESCE(action, 'Not Taken')          AS 'action'
+                                , rule_text                              AS 'ruleDetail'
+                                , a.assigned_to                          AS 'assignedTo'
+                             FROM tb_incident_rules_report a,
+                                  tb_incident_report       b
+                            WHERE a.incident_no = b.incident_no
+                              AND a.incident_no = @p_incident_no
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 282 pr_get_incidents_by_no>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_notif]    Script Date: 31-10-2023 21:40:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_notif](
+        @p_user         VARCHAR(200),
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+		)
+AS
+  DECLARE @l_countinc INT, @l_totalRecCount INT, @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET NOCOUNT ON;
+  SET @l_log = 'iNSIDE pr_get_incident_notif with user as: ' + @p_user
+  EXEC LOGIT @l_log
+  SET @l_log = 'Getting Incident Notification ' + @p_user
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    SELECT @p_recordset = (SELECT notif_id   AS 'notificationId'
+	                            , notif_text AS 'notificationMessage'
+								, recepient  AS 'recepientMail'
+							 FROM tb_incident_notif
+                            WHERE COALESCE(CONSUMED, 'N') = 'N'
+							  FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                       );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 322 pr_get_incident_notif>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
 END
 GO
