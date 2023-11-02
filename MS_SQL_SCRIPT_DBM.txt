@@ -802,3 +802,385 @@ BEGIN
   EXEC LOGIT 'OUTSIDE PR_GET_INC_ACC_DATA'
 END
 GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_fn_execute_Query2]    Script Date: 2-11-2023 17:26:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER FUNCTION [dbo].[PKG_INCIDENT_MANAGEMENT_fn_execute_Query2](
+        @p_queryStatement2      VARCHAR(2000),
+        @p_whereClause          VARCHAR(2000),
+        @p_queryStatementClose2 VARCHAR(2000),
+        @P_totalRecCount        INT
+        )
+    RETURNS VARCHAR
+AS
+BEGIN
+  DECLARE @l_val  VARCHAR(2000), @l_log VARCHAR(MAX), @l_remainingQuery  VARCHAR(2000)
+  SET @l_remainingQuery = 'SELECT ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) AS ROW_NUM, A.*
+                             FROM (SELECT a.*, ROW_NUMBER() OVER(ORDER BY REPORTED_DATE DESC) AS ''ord_col_1''
+                                     FROM vw_Incident_hist A
+                            , ' + CONVERT(VARCHAR, @P_totalRecCount) + ' AS ''totalRecords''
+                          FOR JSON PATH'
+                          --from (select ROW_NUMBER() OVER(ORDER BY INCIDENT_NO ASC) as ROW_NUM, A.* FROM (SELECT * FROM vw_Incident_hist A '
+                          ;
+  SET @l_log = 'l_remainingQuery : ' + @l_remainingQuery
+  EXEC LOGIT @l_log
+  SET @l_val = @p_queryStatement2 + @l_remainingQuery  + @p_whereClause + @p_queryStatementClose2
+  SET @l_log = 'iNSIDE fn_execute_Query2 l_val: ' + @l_val
+  EXEC LOGIT @l_log
+  RETURN  @l_val;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_hist_with_cust]    Script Date: 2-11-2023 19:27:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_hist_with_cust](
+        @p_from_Date    VARCHAR(30),
+        @p_to_Date      VARCHAR(30),
+        @p_status       VARCHAR(5),
+        @p_action       VARCHAR(50), --15Sep
+        @p_cif          VARCHAR(50),
+        @p_account      VARCHAR(50),
+        @p_incidentNo   VARCHAR(50),
+        @p_pagenum      INT,
+        @p_pagesize     INT,
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE
+    @l_countinc             INT,
+    @l_totalRecCount        INt,
+    @l_recordset            VARCHAR(MAX),
+    --15Sep Starts
+    @l_queryStatement1      VARCHAR(2000),
+    @l_queryStatement2      VARCHAR(2000),
+    @l_queryStatementClose2 VARCHAR(2000),
+    @l_whereClause          VARCHAR(2000),
+    @l_andClause            VARCHAR(2000), -- NULL
+    @l_query                VARCHAR(2000),
+    @l_branch               VARCHAR(4),
+    --15Sep Ends
+    @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+    DECLARE @tbl TABLE (RowCnt INT NULL)
+    -- DECLARE @tbl_fnl TABLE (***) pending
+BEGIN
+  SET @l_log = 'iNSIDE PR_GET_INCIDENT_HIST_WITH_CUST with p_status as: ' + @p_status + ' FROM DATE: ' + @p_from_Date + ' TO DATE: ' + @p_to_Date
+  EXEC LOGIT @l_log
+  SET @l_log = 'Getting Inc History with p_status as: ' + @p_status + ' FROM DATE: ' + @p_from_Date + ' TO DATE: ' + @p_to_Date
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  SET @l_log = 'p_incidentNo: ' + @p_incidentNo
+  EXEC LOGIT @l_log
+
+  SELECT @l_branch = (SELECT BRANCH_CODE
+                        FROM TB_USER_PROFILE
+                       WHERE user_name = @p_current_user
+                      );
+  --15Sep Starts
+  SET @l_queryStatement1 = 'SELECT COUNT(*)
+                              FROM vw_Incident_hist '
+  SET @l_queryStatement2 = '(SELECT (SELECT INCIDENT_TYPE                             AS ''incidentType''
+                                          , INCIDENT_NO                               AS ''incidentNo''
+                                          , REPORTED_DATE                             AS ''incidentRaiseTime''
+                                          , STATUS                                    AS ''status''
+                                          , CUSTOMER_NAME                             AS ''customerName''
+                                          , ACTION                                    AS ''action''
+                                          , CURRENT_STAGE                             AS ''currentStage''
+                                          , CUSTOMER_ID                               AS ''customerId''
+                                          , FINAL_COMMENTS                            AS ''finalComments''
+                                          , ASSIGNED_TO                               AS ''assignedTo''
+                                          , REPORTED_BY                               AS ''reportedBy''
+                                          , ROW_NUMBER() OVER(ORDER BY REPORTED_DATE) AS ''ord_col'''
+  SET @l_queryStatementClose2 = ') A
+                ) B WHERE ROW_NUM BETWEEN (' + @p_pagenum + ')*' + @p_pagesize + ' + 1 AND (' + @p_pagenum + '+1) * ' + @p_pagesize
+
+  IF(@p_incidentNo <> 'null')
+  BEGIN
+    SET @l_whereClause = ' WHERE INCIDENT_NO = ' + '''' + @p_incidentNo + ''''
+  END
+  ELSE IF (@p_status not in ('null', 'All'))
+  BEGIN
+     SET @l_whereClause = ' WHERE STATUS = ' +  '''' + @p_status + ''''
+
+    IF(@p_cif <> 'null')
+    BEGIN
+      SET @l_andClause = ' AND CUSTOMER_ID = ' + '''' + @p_cif + ''''
+    END
+    SET @l_whereClause = @l_whereClause + @l_andClause
+
+    IF(@p_account <> 'null')
+    BEGIN
+      IF @l_andClause IS NOT NULL
+      BEGIN
+        SET @l_andClause = @l_andClause + ' AND ACCOUNT_NUMBER = ' + '''' + @p_account + ''''
+      END
+      ELSE
+      BEGIN
+        SET @l_andClause = ' AND ACCOUNT_NUMBER = ' + '''' + @p_account + ''''
+      END
+    END
+    SET @l_whereClause = @l_whereClause + @l_andClause
+
+    IF(@p_action NOT IN ('null','All'))
+    BEGIN
+      IF @l_andClause IS NOT NULL
+      BEGIN
+        SET @l_andClause = ' AND ACTION = ' + '''' + @p_action + ''''
+      END
+      ELSE
+      BEGIN
+        SET @l_andClause = @l_andClause + ' AND ACTION = ' + '''' + @p_action + ''''
+      END
+    END
+    SET @l_whereClause = @l_whereClause + @l_andClause
+
+    SET @l_log = 'l_andClause : ' + @l_andClause
+    EXEC LOGIT @l_log
+
+    IF (@p_from_Date IS NOT NULL)
+    BEGIN
+      IF @l_andClause IS NOT NULL
+      BEGIN
+        SET @l_andClause = ' AND to_date(REPORTED_DATE,''dd-mm-yy'') >= to_date(' + '''' + @p_from_Date + '''' + ',''dd-mm-yy'') '
+      END
+      ELSE
+      BEGIN
+        SET @l_andClause = @l_andClause + ' AND to_date(REPORTED_DATE,''dd-mm-yy'') >= to_date(' + '''' + @p_from_Date + '''' + ',''dd-mm-yy'') '
+      END
+    END
+    SET @l_whereClause = @l_whereClause + @l_andClause
+
+    IF (@p_to_Date IS NOT NULL)
+    BEGIN
+      IF @l_andClause IS NOT NULL
+      BEGIN
+        SET @l_andClause = ' AND to_date(REPORTED_DATE,''dd-mm-yy'') <= to_date(' + '''' + @p_to_Date + '''' + ',''dd-mm-yy'') '
+      END
+      ELSE
+      BEGIN
+        SET @l_andClause = @l_andClause + ' AND to_date(REPORTED_DATE,''dd-mm-yy'') <= to_date(' + '''' + @p_to_Date + '''' + ',''dd-mm-yy'') '
+      END
+    END
+    SET @l_whereClause = @l_whereClause + @l_andClause
+  END
+  ELSE IF(@p_action NOT IN ('null','All'))
+  BEGIN
+    SET @l_whereClause = ' WHERE ACTION = ' + '''' + @p_action + ''''
+
+    SET @l_whereClause = @l_whereClause + @l_andClause
+  END
+  ELSE IF(@p_cif <> 'null')
+  BEGIN
+    SET @l_whereClause = ' WHERE CUSTOMER_ID = ' + '''' + @p_cif + ''''
+  END
+  ELSE IF(@p_account <> 'null')
+  BEGIN
+    SET @l_whereClause = ' WHERE ACCOUNT_NUMBER = ' + '''' + @p_account + ''''
+  END
+  ELSE
+  BEGIN
+    IF (@p_from_Date IS NOT NULL)
+    BEGIN
+      SET @l_whereClause = ' WHERE to_date(REPORTED_DATE,''dd-mm-yy'') >= to_date(p_from_Date,''dd-mm-yy'') '
+
+      IF (@p_to_Date IS NOT NULL)
+      BEGIN
+        IF @l_andClause IS NOT NULL
+        BEGIN
+          SET @l_andClause = @l_andClause + ' AND to_date(REPORTED_DATE,''dd-mm-yy'') <= to_date(p_to_Date,''dd-mm-yy'') '
+        END
+        ELSE
+        BEGIN
+          SET @l_andClause = ' AND to_date(REPORTED_DATE,''dd-mm-yy'') <= to_date(p_to_Date,''dd-mm-yy'') '
+        END
+      END
+
+      IF (@p_status IS NOT NULL)
+      BEGIN
+        IF @l_andClause IS NOT NULL
+        BEGIN
+          SET @l_andClause = @l_andClause +  ' AND  STATUS = ' +  '''' + @p_status + ''''
+        END
+        ELSE
+        BEGIN
+          SET @l_andClause = ' AND  STATUS = ' +  '''' + @p_status + ''''
+        END
+      END
+
+      IF (@p_cif IS NOT NULL)
+      BEGIN
+        IF @l_andClause IS NOT NULL
+        BEGIN
+          SET @l_andClause = @l_andClause + ' AND CUSTOMER_ID = ' +  '''' + @p_cif + ''''
+        END
+        ELSE
+        BEGIN
+          SET @l_andClause = ' AND CUSTOMER_ID = ' + '''' + @p_cif + ''''
+        END
+      END
+
+      IF (@p_account IS NOT NULL)
+      BEGIN
+        IF @l_andClause IS NOT NULL
+        BEGIN
+          SET @l_andClause = @l_andClause + '  AND ACCOUNT_NUMBER = ' + '''' + @p_account + ''''
+        END
+        ELSE
+        BEGIN
+          SET @l_andClause = '  AND ACCOUNT_NUMBER = ' + '''' + @p_account + ''''
+        END
+      END
+    ELSE IF(@p_to_Date IS NOT NULL)
+      SET @l_whereClause = ' WHERE to_date(REPORTED_DATE,''dd-mm-yy'') <= to_date(p_to_Date,''dd-mm-yy'') '
+    END
+
+    SET @l_whereClause = @l_whereClause + @l_andClause
+
+  END
+
+  SET @l_query = @l_queryStatement1 + @l_whereClause
+  SET @l_log = '111111 l_query ::' + @l_query
+  EXEC LOGIT @l_log
+  INSERT @tbl
+    (RowCnt)
+  EXECUTE(@l_query);
+  SET @l_totalRecCount = (SELECT RowCnt
+                           FROM @tbl
+                          );
+  SET @l_log = '111111 l_totalRecCount ::' + @l_totalRecCount
+  EXEC LOGIT @l_log
+
+  SET @l_query = [dbo].[PKG_INCIDENT_MANAGEMENT_fn_execute_Query2](@l_queryStatement2, @l_whereClause, @l_queryStatementClose2, @l_totalRecCount)
+
+  --l_query := l_queryStatement2 || l_whereClause || l_queryStatementClose2;
+  SET @l_log = '222222 l_query ::' + @l_query
+  EXEC LOGIT @l_log
+  -- Pending starts
+  --INSERT @tbl_fnl
+  --  (***)
+  --EXECUTE(@l_query);
+  --SET @p_recordset = (SELECT ***
+  --                      FROM @tbl_fnl
+  --                    );
+  -- Pending ends
+  -- Exception handling too pending
+
+        /*IF (p_incidentNo <>'null') THEN
+        LOGIT('p_incidentNo: '||p_incidentNo);
+        SELECT json_object('reportData' VALUE json_arrayagg (
+                    json_object ('incidentType' VALUE INCIDENT_TYPE,
+                    'incidentNo' VALUE INCIDENT_NO,
+                    'incidentRaiseTime' VALUE REPORTED_DATE,
+                    'status' VALUE STATUS,
+                    'customerName' VALUE CUSTOMER_NAME,
+                    'action' VALUE ACTION,
+                    'currentStage' VALUE CURRENT_STAGE,
+                    'customerId' VALUE CUSTOMER_ID,
+                    'finalComments' VALUE FINAL_COMMENTS,
+                    'assignedTo' VALUE ASSIGNED_TO,
+                    'reportedBy' VALUE REPORTED_BY
+                    ) ORDER BY REPORTED_DATE,INCIDENT_NO DESC RETURNING CLOB
+                    ) , 'totalRecords' VALUE l_totalRecCount returning CLOB
+                    ) AS json_doc
+                    into p_recordset
+                    from (select rownum as ROW_NUM,A.* FROM (SELECT * FROM vw_Incident_hist A
+                    WHERE INCIDENT_NO = p_incidentNo
+                    ORDER BY REPORTED_DATE,INCIDENT_NO DESC)A
+                    ) WHERE ROW_NUM BETWEEN (p_pagenum)*p_pagesize + 1 AND (p_pagenum+1) * p_pagesize;
+
+        RETURN;
+        END IF;
+
+
+
+            IF(p_status <>'All') THEN
+
+                IF(p_cif<>'null' and p_account ='null') THEN
+                    PR_GET_INC_CIF_DATA(p_from_Date,p_to_Date,p_status,p_cif,p_pagenum,p_pagesize,l_totalRecCount,l_recordset);
+                    p_recordset := l_recordset;
+                ELSIF(p_cif<>'null' and p_account <>'null') THEN
+                    PR_GET_INC_ACC_DATA(p_from_Date,p_to_Date,p_status,p_cif,p_account,p_pagenum,p_pagesize,l_totalRecCount,l_recordset);
+                    p_recordset := l_recordset;
+                ELSE
+                  SELECT COUNT(*)
+                    into l_totalRecCount
+                    FROM vw_Incident_hist
+                    WHERE REPORTED_DATE BETWEEN p_from_Date AND p_to_Date
+                    AND STATUS = p_status;
+
+                    SELECT json_object('reportData' VALUE json_arrayagg (
+                    json_object ('incidentType' VALUE INCIDENT_TYPE,
+                    'incidentNo' VALUE INCIDENT_NO,
+                    'incidentRaiseTime' VALUE REPORTED_DATE,
+                    'status' VALUE STATUS,
+                    'customerName' VALUE CUSTOMER_NAME,
+                    'action' VALUE ACTION,
+                    'currentStage' VALUE CURRENT_STAGE,
+                    'customerId' VALUE CUSTOMER_ID,
+                    'finalComments' VALUE FINAL_COMMENTS,
+                    'assignedTo' VALUE ASSIGNED_TO,
+                    'reportedBy' VALUE REPORTED_BY
+                    ) ORDER BY REPORTED_DATE,INCIDENT_NO DESC RETURNING CLOB
+                    ) , 'totalRecords' VALUE l_totalRecCount returning CLOB
+                    ) AS json_doc
+                    into p_recordset
+                    from (select rownum as ROW_NUM,A.* FROM (SELECT * FROM vw_Incident_hist A
+                    WHERE to_date(REPORTED_DATE,'dd-mm-yy') BETWEEN to_date(p_from_Date,'dd-mm-yy') AND to_date(p_to_Date,'dd-mm-yy')
+                    AND STATUS = p_status
+                    ORDER BY REPORTED_DATE,INCIDENT_NO DESC)A
+                    ) WHERE ROW_NUM BETWEEN (p_pagenum)*p_pagesize + 1 AND (p_pagenum+1) * p_pagesize;
+
+                END IF;
+        ELSE
+
+            IF(p_cif<>'null' and p_account ='null') THEN
+                PR_GET_INC_CIF_DATA(p_from_Date,p_to_Date,'null',p_cif,p_pagenum,p_pagesize,l_totalRecCount,l_recordset);
+                p_recordset := l_recordset;
+            ELSIF(p_cif<>'null' and p_account <>'null') THEN
+                PR_GET_INC_ACC_DATA(p_from_Date,p_to_Date,'null',p_cif,p_account,p_pagenum,p_pagesize,l_totalRecCount,l_recordset);
+                p_recordset := l_recordset;
+            ELSE
+              SELECT COUNT(*)
+                    into l_totalRecCount
+                    FROM vw_Incident_hist
+                    WHERE to_date(REPORTED_DATE,'dd-mm-yy') BETWEEN to_date(p_from_Date,'dd-mm-yy') AND to_date(p_to_Date,'dd-mm-yy') ;
+
+                SELECT json_object('reportData' VALUE json_arrayagg (
+                    json_object ('incidentType' VALUE INCIDENT_TYPE,
+                    'incidentNo' VALUE INCIDENT_NO,
+                    'incidentRaiseTime' VALUE REPORTED_DATE,
+                    'status' VALUE STATUS,
+                    'customerName' VALUE CUSTOMER_NAME,
+                    'action' VALUE ACTION,
+                    'currentStage' VALUE CURRENT_STAGE,
+                    'customerId' VALUE CUSTOMER_ID,
+                    'finalComments' VALUE FINAL_COMMENTS,
+                    'assignedTo' VALUE ASSIGNED_TO,
+                    'reportedBy' VALUE REPORTED_BY
+                    )  ORDER BY REPORTED_DATE,INCIDENT_NO DESC RETURNING CLOB
+                    ) , 'totalRecords' VALUE l_totalRecCount returning CLOB
+                    ) AS json_doc
+                    into p_recordset
+                    from (select rownum as ROW_NUM,A.* FROM (SELECT * FROM vw_Incident_hist A
+                    WHERE to_date(REPORTED_DATE,'dd-mm-yy') BETWEEN to_date(p_from_Date,'dd-mm-yy') AND to_date(p_to_Date,'dd-mm-yy')
+                    ORDER BY REPORTED_DATE,INCIDENT_NO DESC)A
+                    ) WHERE ROW_NUM BETWEEN (p_pagenum)*p_pagesize + 1 AND (p_pagenum+1) * p_pagesize;
+              END IF;
+
+        END IF;*/
+END
+GO
