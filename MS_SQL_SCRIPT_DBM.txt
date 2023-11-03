@@ -29,7 +29,7 @@ BEGIN
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
     SET @l_err_msg = ERROR_MESSAGE()
-    SET @l_log = 'Line # 33 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    SET @l_log = 'Line # 29 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
     EXEC LOGIT @l_log
   END CATCH;
 
@@ -76,7 +76,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 80 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 76 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -126,7 +126,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 130 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 126 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -177,7 +177,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 181 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 178 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -229,7 +229,7 @@ BEGIN
           BEGIN CATCH
             SET @l_err_num = ERROR_NUMBER()
             SET @l_err_msg = ERROR_MESSAGE()
-            SET @l_log = 'Line # 233 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+            SET @l_log = 'Line # 230 pr_get_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
             EXEC LOGIT @l_log
           END CATCH;
         END
@@ -278,7 +278,7 @@ BEGIN
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
     SET @l_err_msg = ERROR_MESSAGE()
-    SET @l_log = 'Line # 282 pr_get_incidents_by_no>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    SET @l_log = 'Line # 38 pr_get_incidents_by_no>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
     EXEC LOGIT @l_log
   END CATCH;
 END
@@ -319,7 +319,7 @@ BEGIN
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
     SET @l_err_msg = ERROR_MESSAGE()
-    SET @l_log = 'Line # 322 pr_get_incident_notif>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    SET @l_log = 'Line # 32 pr_get_incident_notif>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
     EXEC LOGIT @l_log
   END CATCH;
 END
@@ -361,7 +361,7 @@ BEGIN
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
     SET @l_err_msg = ERROR_MESSAGE()
-    SET @l_log = 'Line # 365 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    SET @l_log = 'Line # 33 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
     EXEC LOGIT @l_log
   END CATCH;
 
@@ -406,7 +406,7 @@ BEGIN
       BEGIN CATCH
         SET @l_err_num = ERROR_NUMBER()
         SET @l_err_msg = ERROR_MESSAGE()
-        SET @l_log = 'Line # 408 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        SET @l_log = 'Line # 78 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
         EXEC LOGIT @l_log
       END CATCH;
     END
@@ -455,7 +455,7 @@ BEGIN
       BEGIN CATCH
         SET @l_err_num = ERROR_NUMBER()
         SET @l_err_msg = ERROR_MESSAGE()
-        SET @l_log = 'Line # 455 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        SET @l_log = 'Line # 127 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
         EXEC LOGIT @l_log
       END CATCH;
     END
@@ -500,7 +500,7 @@ BEGIN
       BEGIN CATCH
         SET @l_err_num = ERROR_NUMBER()
         SET @l_err_msg = ERROR_MESSAGE()
-        SET @l_log = 'Line # 496 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        SET @l_log = 'Line # 172 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
         EXEC LOGIT @l_log
       END CATCH;
     END
@@ -547,7 +547,7 @@ BEGIN
       BEGIN CATCH
         SET @l_err_num = ERROR_NUMBER()
         SET @l_err_msg = ERROR_MESSAGE()
-        SET @l_log = 'Line # 541 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+        SET @l_log = 'Line # 219 pr_get_incident_history>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
         EXEC LOGIT @l_log
       END CATCH;
     END
@@ -620,7 +620,7 @@ BEGIN
     BEGIN CATCH
       SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
-      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      SET @l_log = 'Line # 63 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
     END CATCH;
   END
@@ -665,7 +665,7 @@ BEGIN
     BEGIN CATCH
       SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
-      SET @l_log = 'Line # 667 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      SET @l_log = 'Line # 108 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
     END CATCH;
   END
@@ -747,7 +747,7 @@ BEGIN
     BEGIN CATCH
       SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
-      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      SET @l_log = 'Line # 71 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
     END CATCH;
   END
@@ -795,7 +795,7 @@ BEGIN
     BEGIN CATCH
       SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
-      SET @l_log = 'Line # 622 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      SET @l_log = 'Line # 119 pr_get_inc_cif_data>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
     END CATCH;
   END
@@ -876,7 +876,20 @@ AS
     --15Sep Ends
     @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
     DECLARE @tbl TABLE (RowCnt INT NULL)
-    -- DECLARE @tbl_fnl TABLE (***) pending
+    DECLARE @tbl_fnl TABLE (
+      incident_type   VARCHAR(50),
+      incident_no     VARCHAR(50),
+      reported_date   DATETIME,
+      status          VARCHAR(50),
+      customer_name   VARCHAR(200),
+      action          VARCHAR(9),
+      current_stage   FLOAT,
+      customer_id     VARCHAR(50),
+      final_comments  VARCHAR(200),
+      assigned_to     VARCHAR(50),
+      reported_by     VARCHAR(50),
+      totalrecords    INT
+      )
 BEGIN
   SET @l_log = 'iNSIDE PR_GET_INCIDENT_HIST_WITH_CUST with p_status as: ' + @p_status + ' FROM DATE: ' + @p_from_Date + ' TO DATE: ' + @p_to_Date
   EXEC LOGIT @l_log
@@ -1064,20 +1077,47 @@ BEGIN
   SET @l_log = '111111 l_totalRecCount ::' + @l_totalRecCount
   EXEC LOGIT @l_log
 
-  SET @l_query = [dbo].[PKG_INCIDENT_MANAGEMENT_fn_execute_Query2](@l_queryStatement2, @l_whereClause, @l_queryStatementClose2, @l_totalRecCount)
+  BEGIN TRY
+  SET @l_query = [dbo].[PKG_INCIDENT_MANAGEMENT_fn_execute_Query2](@l_queryStatement2,
+                                                                   @l_whereClause,
+                                                                   @l_queryStatementClose2,
+                                                                   @l_totalRecCount)
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 245 PR_GET_INCIDENT_HIST_WITH_CUST>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
 
-  --l_query := l_queryStatement2 || l_whereClause || l_queryStatementClose2;
   SET @l_log = '222222 l_query ::' + @l_query
   EXEC LOGIT @l_log
-  -- Pending starts
-  --INSERT @tbl_fnl
-  --  (***)
-  --EXECUTE(@l_query);
-  --SET @p_recordset = (SELECT ***
-  --                      FROM @tbl_fnl
-  --                    );
-  -- Pending ends
-  -- Exception handling too pending
+  INSERT @tbl_fnl
+  EXECUTE(@l_query);
+  BEGIN TRY
+  SET @p_recordset = (SELECT INCIDENT_TYPE  AS 'incidentType'
+                           , INCIDENT_NO    AS 'incidentNo'
+                           , REPORTED_DATE  AS 'incidentRaiseTime'
+                           , STATUS         AS 'status'
+                           , CUSTOMER_NAME  AS 'customerName'
+                           , ACTION         AS 'action'
+                           , CURRENT_STAGE  AS 'currentStage'
+                           , CUSTOMER_ID    AS 'customerId'
+                           , FINAL_COMMENTS AS 'finalComments'
+                           , ASSIGNED_TO    AS 'assignedTo'
+                           , REPORTED_BY    AS 'reportedBy'
+                           , totalrecords   AS 'reportData'
+                       FROM @tbl_fnl
+                       FOR JSON AUTO
+                     );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 274 PR_GET_INCIDENT_HIST_WITH_CUST>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+
 
         /*IF (p_incidentNo <>'null') THEN
         LOGIT('p_incidentNo: '||p_incidentNo);
@@ -1182,5 +1222,225 @@ BEGIN
               END IF;
 
         END IF;*/
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentsummary]    Script Date: 3-11-2023 22:25:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentsummary](
+        @p_incident_no  VARCHAR(50),
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+		)
+AS
+  DECLARE @l_countinc INT, @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  EXEC LOGIT 'iNSIDE PR_GET_INCIDENTS'
+  SET @l_log = 'Getting Incident Summary ' + @p_incident_no
+  EXEC AUDIT_LOGIT @p_user = p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    SELECT @p_recordset = (SELECT incident_no    AS 'incidentNo'
+	                            , incident_type  AS 'incidentType'
+								, customer_id    AS 'customerId'
+								, customer_name  AS 'customerName'
+								, bank_name      AS 'bankName'
+								, branch_name    AS 'branchName'
+								, account_number AS 'accountNumber'
+							 FROM tb_incident_report
+                            WHERE incident_no = @p_incident_no
+							  FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                       );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 34 pr_get_incidentsummary>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_reportdetails]    Script Date: 3-11-2023 23:12:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_reportdetails](
+        @p_incident_no  VARCHAR(50),
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+		)
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  EXEC LOGIT 'iNSIDE PR_GET_REPORTDETAILS'
+  SET @l_log = 'Getting Incident Report Details ' + @p_incident_no
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    SELECT @p_recordset = (SELECT customer_id          AS 'customerId'
+	                            , report_name          AS 'reportName'
+								, report_endpointurl   AS 'reportEndPoint'
+								, generated_reportname AS 'generatedReport'
+								, report_templateurl   AS 'reportTemplateURL'
+							 FROM tb_incident_report       a,
+                                  tb_incident_rules_report b,
+                                  tb_rule_report_maint     c
+                             WHERE a.incident_no   = b.incident_no
+                               AND c.INCIDENT_TYPE = a.incident_type
+                               AND c.report_type   = b.report_name
+                               AND b.incident_no   = p_incident_no
+                               AND C.AUTH_STAT     = 'A'
+							   FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                       );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 38 pr_get_reportdetails>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentreportingstruct]    Script Date: 3-11-2023 23:30:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentreportingstruct](
+        @p_incident_type VARCHAR(50),
+        @p_current_user  VARCHAR(200),
+        @p_recordset     VARCHAR(MAX) OUT
+		)
+AS
+  DECLARE
+    @l_PRIORITY      VARCHAR(7),
+    @l_incident_type VARCHAR(50),
+    @l_count         INT = 0,
+    @l_locked_by     VARCHAR(100),
+	@l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'iNSIDE PR_GET_RULEREPORTINGSTRUCT wth p_current_user: ' + @p_current_user
+  EXEC LOGIT @l_log
+  SET @l_log = 'Inside PR_GET_INCIDENTREPORTINGSTRUCT with p_incident_type: ' + @p_incident_type
+  EXEC LOGIT @l_log
+
+  SELECT @l_PRIORITY      = a.PRIORITY
+       , @l_incident_type = b.incident_type
+    FROM tb_incident_report       b
+	   , tb_incident_rules_report a
+   WHERE a.incident_no = b.incident_no
+     AND a.incident_no = @p_incident_type;
+  IF(@p_incident_type ='null')
+  BEGIN
+    EXEC LOGIT ' will selct all'
+	BEGIN TRY
+	  SELECT @p_recordset = (SELECT incident_type AS 'incidentCode'
+	                              , report_type   AS 'reportType'
+								  , incident_desc AS 'incidentDesc'
+							   FROM tb_rule_report_maint
+							  WHERE AUTH_STAT = 'A'
+							    FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                         );
+	END TRY
+	BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 45 pr_get_reportdetails>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+  ELSE
+  BEGIN
+    EXEC LOGIT ' will selct only for incident_desc'
+	BEGIN TRY
+	  SELECT @l_count = COUNT(*)
+	       , @l_locked_by = LOCKED_BY
+        FROM TB_INCIDENT_REPORT
+       WHERE INCIDENT_NO = @p_incident_type
+	     AND (   LOCKED_BY  = @p_current_user
+		      OR LOCKED_BY IS NULL)
+       GROUP BY LOCKED_BY;
+	END TRY
+	BEGIN CATCH
+	  EXEC LOGIT ' In Exception clause'
+	  SELECT @l_locked_by = LOCKED_BY
+        FROM TB_INCIDENT_REPORT
+       WHERE INCIDENT_NO = @p_incident_type;
+	END CATCH;
+  END
+
+  SET @l_log = ' l_count :' + @l_count
+  EXEC LOGIT @l_log
+
+  IF (@l_count > 0)
+  BEGIN
+    SET @l_log = ' vALUE OF L_PRIORITY: ' + @l_priority
+	EXEC LOGIT @l_log
+	BEGIN TRY
+	  SELECT @p_recordset = (SELECT incident_type AS 'incidentType'
+	                              , report_type   AS 'reportType'
+								  , incident_desc AS 'incidentDesc'
+								  , @l_PRIORITY   AS 'priority'
+								  , ''            AS 'msg'
+							   FROM tb_rule_report_maint
+							  WHERE incident_type = @l_incident_type --26July
+                                AND AUTH_STAT     = 'A'
+								FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                         );
+	END TRY
+	BEGIN CATCH
+	  SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 91 pr_get_incidentreportingstruct>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+
+  UPDATE TB_INCIDENT_REPORT
+     SET LOCKED_BY = @p_current_user
+   WHERE INCIDENT_NO = @p_incident_type;
+  END
+  ELSE
+  BEGIN
+    EXEC LOGIT ' Alert is Locked for further actions '
+	SELECT @p_recordset = 'Alert is Locked for further actions'
+
+	BEGIN TRY
+	  SELECT @p_recordset = (SELECT incident_type                              AS 'incidentType'
+	                              , report_type                                AS 'reportType'
+								  , incident_desc                              AS 'incidentDesc'
+								  , @l_PRIORITY                                AS 'priority'
+								  , 'Alert is Locked by User: ' + @l_locked_by AS 'msg'
+							   FROM tb_rule_report_maint
+							  WHERE incident_type = @l_incident_type --26July
+                                AND AUTH_STAT     = 'A'
+								FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+	                         );
+	END TRY
+	BEGIN CATCH
+	  SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 119 pr_get_incidentreportingstruct>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END
+
 END
 GO
