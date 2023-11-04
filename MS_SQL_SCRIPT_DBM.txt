@@ -1238,7 +1238,7 @@ ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentsummary](
         @p_incident_no  VARCHAR(50),
         @p_current_user VARCHAR(200),
         @p_recordset    VARCHAR(MAX) OUT
-		)
+        )
 AS
   DECLARE @l_countinc INT, @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
 BEGIN
@@ -1248,16 +1248,16 @@ BEGIN
                  , @p_text = @l_log
   BEGIN TRY
     SELECT @p_recordset = (SELECT incident_no    AS 'incidentNo'
-	                            , incident_type  AS 'incidentType'
-								, customer_id    AS 'customerId'
-								, customer_name  AS 'customerName'
-								, bank_name      AS 'bankName'
-								, branch_name    AS 'branchName'
-								, account_number AS 'accountNumber'
-							 FROM tb_incident_report
+                                , incident_type  AS 'incidentType'
+                                , customer_id    AS 'customerId'
+                                , customer_name  AS 'customerName'
+                                , bank_name      AS 'bankName'
+                                , branch_name    AS 'branchName'
+                                , account_number AS 'accountNumber'
+                             FROM tb_incident_report
                             WHERE incident_no = @p_incident_no
-							  FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                       );
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
   END TRY
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
@@ -1281,7 +1281,7 @@ ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_reportdetails](
         @p_incident_no  VARCHAR(50),
         @p_current_user VARCHAR(200),
         @p_recordset    VARCHAR(MAX) OUT
-		)
+        )
 AS
   DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
 BEGIN
@@ -1291,11 +1291,11 @@ BEGIN
                  , @p_text = @l_log
   BEGIN TRY
     SELECT @p_recordset = (SELECT customer_id          AS 'customerId'
-	                            , report_name          AS 'reportName'
-								, report_endpointurl   AS 'reportEndPoint'
-								, generated_reportname AS 'generatedReport'
-								, report_templateurl   AS 'reportTemplateURL'
-							 FROM tb_incident_report       a,
+                                , report_name          AS 'reportName'
+                                , report_endpointurl   AS 'reportEndPoint'
+                                , generated_reportname AS 'generatedReport'
+                                , report_templateurl   AS 'reportTemplateURL'
+                             FROM tb_incident_report       a,
                                   tb_incident_rules_report b,
                                   tb_rule_report_maint     c
                              WHERE a.incident_no   = b.incident_no
@@ -1303,8 +1303,8 @@ BEGIN
                                AND c.report_type   = b.report_name
                                AND b.incident_no   = p_incident_no
                                AND C.AUTH_STAT     = 'A'
-							   FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                       );
+                               FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
   END TRY
   BEGIN CATCH
     SET @l_err_num = ERROR_NUMBER()
@@ -1328,14 +1328,14 @@ ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incidentreportingstruct](
         @p_incident_type VARCHAR(50),
         @p_current_user  VARCHAR(200),
         @p_recordset     VARCHAR(MAX) OUT
-		)
+        )
 AS
   DECLARE
     @l_PRIORITY      VARCHAR(7),
     @l_incident_type VARCHAR(50),
     @l_count         INT = 0,
     @l_locked_by     VARCHAR(100),
-	@l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+    @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
 BEGIN
   SET @l_log = 'iNSIDE PR_GET_RULEREPORTINGSTRUCT wth p_current_user: ' + @p_current_user
   EXEC LOGIT @l_log
@@ -1345,22 +1345,22 @@ BEGIN
   SELECT @l_PRIORITY      = a.PRIORITY
        , @l_incident_type = b.incident_type
     FROM tb_incident_report       b
-	   , tb_incident_rules_report a
+       , tb_incident_rules_report a
    WHERE a.incident_no = b.incident_no
      AND a.incident_no = @p_incident_type;
   IF(@p_incident_type ='null')
   BEGIN
     EXEC LOGIT ' will selct all'
-	BEGIN TRY
-	  SELECT @p_recordset = (SELECT incident_type AS 'incidentCode'
-	                              , report_type   AS 'reportType'
-								  , incident_desc AS 'incidentDesc'
-							   FROM tb_rule_report_maint
-							  WHERE AUTH_STAT = 'A'
-							    FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                         );
-	END TRY
-	BEGIN CATCH
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT incident_type AS 'incidentCode'
+                                  , report_type   AS 'reportType'
+                                  , incident_desc AS 'incidentDesc'
+                               FROM tb_rule_report_maint
+                              WHERE AUTH_STAT = 'A'
+                                FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                             );
+    END TRY
+    BEGIN CATCH
       SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
       SET @l_log = 'Line # 45 pr_get_reportdetails>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
@@ -1370,21 +1370,21 @@ BEGIN
   ELSE
   BEGIN
     EXEC LOGIT ' will selct only for incident_desc'
-	BEGIN TRY
-	  SELECT @l_count = COUNT(*)
-	       , @l_locked_by = LOCKED_BY
+    BEGIN TRY
+      SELECT @l_count = COUNT(*)
+           , @l_locked_by = LOCKED_BY
         FROM TB_INCIDENT_REPORT
        WHERE INCIDENT_NO = @p_incident_type
-	     AND (   LOCKED_BY  = @p_current_user
-		      OR LOCKED_BY IS NULL)
+         AND (   LOCKED_BY  = @p_current_user
+              OR LOCKED_BY IS NULL)
        GROUP BY LOCKED_BY;
-	END TRY
-	BEGIN CATCH
-	  EXEC LOGIT ' In Exception clause'
-	  SELECT @l_locked_by = LOCKED_BY
+    END TRY
+    BEGIN CATCH
+      EXEC LOGIT ' In Exception clause'
+      SELECT @l_locked_by = LOCKED_BY
         FROM TB_INCIDENT_REPORT
        WHERE INCIDENT_NO = @p_incident_type;
-	END CATCH;
+    END CATCH;
   END
 
   SET @l_log = ' l_count :' + @l_count
@@ -1393,21 +1393,21 @@ BEGIN
   IF (@l_count > 0)
   BEGIN
     SET @l_log = ' vALUE OF L_PRIORITY: ' + @l_priority
-	EXEC LOGIT @l_log
-	BEGIN TRY
-	  SELECT @p_recordset = (SELECT incident_type AS 'incidentType'
-	                              , report_type   AS 'reportType'
-								  , incident_desc AS 'incidentDesc'
-								  , @l_PRIORITY   AS 'priority'
-								  , ''            AS 'msg'
-							   FROM tb_rule_report_maint
-							  WHERE incident_type = @l_incident_type --26July
+    EXEC LOGIT @l_log
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT incident_type AS 'incidentType'
+                                  , report_type   AS 'reportType'
+                                  , incident_desc AS 'incidentDesc'
+                                  , @l_PRIORITY   AS 'priority'
+                                  , ''            AS 'msg'
+                               FROM tb_rule_report_maint
+                              WHERE incident_type = @l_incident_type --26July
                                 AND AUTH_STAT     = 'A'
-								FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                         );
-	END TRY
-	BEGIN CATCH
-	  SET @l_err_num = ERROR_NUMBER()
+                                FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
       SET @l_log = 'Line # 91 pr_get_incidentreportingstruct>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
@@ -1420,27 +1420,269 @@ BEGIN
   ELSE
   BEGIN
     EXEC LOGIT ' Alert is Locked for further actions '
-	SELECT @p_recordset = 'Alert is Locked for further actions'
+    SELECT @p_recordset = 'Alert is Locked for further actions'
 
-	BEGIN TRY
-	  SELECT @p_recordset = (SELECT incident_type                              AS 'incidentType'
-	                              , report_type                                AS 'reportType'
-								  , incident_desc                              AS 'incidentDesc'
-								  , @l_PRIORITY                                AS 'priority'
-								  , 'Alert is Locked by User: ' + @l_locked_by AS 'msg'
-							   FROM tb_rule_report_maint
-							  WHERE incident_type = @l_incident_type --26July
+    BEGIN TRY
+      SELECT @p_recordset = (SELECT incident_type                              AS 'incidentType'
+                                  , report_type                                AS 'reportType'
+                                  , incident_desc                              AS 'incidentDesc'
+                                  , @l_PRIORITY                                AS 'priority'
+                                  , 'Alert is Locked by User: ' + @l_locked_by AS 'msg'
+                               FROM tb_rule_report_maint
+                              WHERE incident_type = @l_incident_type --26July
                                 AND AUTH_STAT     = 'A'
-								FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
-	                         );
-	END TRY
-	BEGIN CATCH
-	  SET @l_err_num = ERROR_NUMBER()
+                                FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                             );
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
       SET @l_err_msg = ERROR_MESSAGE()
       SET @l_log = 'Line # 119 pr_get_incidentreportingstruct>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
       EXEC LOGIT @l_log
     END CATCH;
   END
 
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incidentType_Maint]    Script Date: 4-11-2023 11:32:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incidentType_Maint](
+        @p_incident_type  VARCHAR(50),
+        @p_incident_desc  VARCHAR(50),
+        @p_report_type    VARCHAR(100),
+        @p_report_path    VARCHAR(100),
+        @p_report_name    VARCHAR(200),
+        @p_template_path  VARCHAR(500),
+        @p_current_user   VARCHAR(200)
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  EXEC LOGIT 'iNSIDE pr_update_incidentType_Maint'
+  SET @l_log = 'Updating Alert Type Maintenace ' + @p_incident_type
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    --BEGIN TRY
+      INSERT INTO tb_rule_report_maint(incident_type, report_type, report_endpointURL, generated_reportName, report_templateURL, incident_desc,
+                                       assigned_to, maker_id, maker_dt_stamp, auth_stat, version)
+           VALUES (@p_incident_type, @p_report_type, @p_report_path, @p_report_name, @p_template_path, @p_incident_desc,
+                   'ParamAuthRole', @p_current_user, CURRENT_TIMESTAMP, 'U', 1);
+    --END TRY
+    --BEGIN CATCH
+    --  SET @l_err_num = ERROR_NUMBER()
+    --  SET @l_err_msg = ERROR_MESSAGE()
+    --  SET @l_log = 'Line # 32 pr_update_incidentType_Maint>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    --  EXEC LOGIT @l_log
+    --END CATCH;
+  END TRY
+  BEGIN CATCH
+    IF ERROR_NUMBER() = 2601
+    BEGIN TRY
+      UPDATE tb_rule_report_maint
+         SET REPORT_ENDPOINTURL   = @p_report_path
+           , GENERATED_REPORTNAME = @p_report_name
+           , REPORT_TEMPLATEURL   = @p_template_path
+           , INCIDENT_DESC        = @p_incident_desc
+           , ASSIGNED_TO          = 'ParamAuthRole'
+           , maker_id             = @p_current_user
+           , MAKER_DT_STAMP       = CURRENT_TIMESTAMP
+           , AUTH_STAT            = 'U'
+           , VERSION              = VERSION + 1
+        WHERE INCIDENT_TYPE = @p_incident_type
+          AND REPORT_TYPE   = @p_report_type;
+    END TRY
+    BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 55 pr_update_incidentType_Maint>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incident_notif]    Script Date: 4-11-2023 12:51:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incident_notif](
+        @p_notif_id     VARCHAR(20),
+        @p_current_user VARCHAR(200)
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'iNSIDE pr_update_incident_notif with p_notif_id: ' + @p_notif_id
+  EXEC LOGIT @l_log
+  SET @l_log = 'Updating Incident Notification ' + @p_notif_id
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    UPDATE TB_INCIDENT_NOTIF
+       SET CONSUMED ='Y'
+     WHERE NOTIF_ID = @p_notif_id;
+  EXEC LOGIT 'Updated Consumed'
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 27 pr_update_incident_notif>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incidents]    Script Date: 4-11-2023 13:27:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_update_incidents](
+        @p_incident_no    VARCHAR(50),
+        @p_incident_type  VARCHAR(50),
+        @p_customer_id    VARCHAR(50),
+        @p_customer_name  VARCHAR(200),
+        @p_final_comments VARCHAR(200),
+        --p_reported_time  IN VARCHAR2,
+        @p_status         VARCHAR(50),
+        @p_current_stage  FLOAT,
+        @p_assigned_to    VARCHAR(50),
+        @p_reported_by    VARCHAR(50),
+        @p_bank_name      VARCHAR(50),
+        @p_branch_name    VARCHAR(50),
+        @p_account_number VARCHAR(50),
+        @p_current_user   VARCHAR(200)
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'iNSIDE PR_UPDATE_RULEVIOLATION: ' + @p_final_comments
+  EXEC LOGIT @l_log
+  EXEC LOGIT 'Inside pr_update_incidents'
+  SET @l_log = 'Updating Incident Reports ' + @p_incident_no
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+  BEGIN TRY
+    INSERT INTO tb_incident_report (
+      incident_no,
+      incident_type,
+      customer_id,
+      customer_name,
+      final_comments ,
+      reported_date,
+      status,
+      current_stage,
+      assigned_to,
+      reported_by,
+      bank_name,
+      branch_name,
+      account_number
+       ) VALUES (
+           @p_incident_no,
+           @p_incident_type,
+           @p_customer_id,
+           @p_customer_name,
+           @p_final_comments,
+           CURRENT_TIMESTAMP,
+           'Open',
+           1,
+           @p_assigned_to,
+           @p_reported_by,
+           @p_bank_name,
+           @p_branch_name,
+           @p_account_number
+        );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 65 pr_update_incidents>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_fn_get_IncidentType]    Script Date: 4-11-2023 13:58:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER FUNCTION [dbo].[PKG_INCIDENT_MANAGEMENT_fn_get_IncidentType](
+        @p_Incident_No VARCHAR(50)
+        )
+    RETURNS VARCHAR
+AS
+BEGIN
+  DECLARE @l_IncType VARCHAR(50)
+  SELECT @l_IncType = INCIDENT_TYPE
+    FROM TB_INCIDENT_REPORT
+   WHERE INCIDENT_NO = @p_Incident_No
+     ;
+  RETURN @l_IncType;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_fn_get_assign_dets]    Script Date: 4-11-2023 14:11:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER FUNCTION [dbo].[PKG_INCIDENT_MANAGEMENT_fn_get_assign_dets](
+        @p_incType  VARCHAR(100),
+        @p_actionBy VARCHAR(100),
+        @p_op       VARCHAR(100)
+        )
+    RETURNS VARCHAR
+AS
+BEGIN
+  DECLARE
+    @l_status VARCHAR(20) = 'Open',
+    @l_allocTo VARCHAR(100),
+    @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+  SET @l_log = 'p_incType: ' + @p_incType + ' p_op: ' + @p_op + ' p_actionBy: ' + @p_actionBy
+  EXEC LOGIT @l_log
+
+  SELECT @l_allocTo = (SELECT ROLE_ID
+                        FROM TB_USER_PROFILE
+                       WHERE USER_NAME = @p_actionBy
+                      );
+  SELECT @l_status  = STATUS
+       , @l_allocTo = ALLOCATED_TO
+    FROM TB_WORKFLOW_DETAILS A
+   WHERE Incident_Type = @p_incType
+     AND AUTH_STAT = 'A'
+     AND Operation = @p_op
+     AND action_by IN (SELECT ROLE_ID
+                         FROM TB_USER_PROFILE
+                        WHERE USER_NAME = @p_actionBy);
+  SET @l_log = 'l_status: ' + @l_status + ' l_allocTo: ' + @l_allocTo
+  EXEC LOGIT @l_log
+  RETURN @l_status + '~' + @l_allocTo;
 END
 GO
