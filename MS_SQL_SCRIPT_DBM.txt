@@ -1686,3 +1686,301 @@ BEGIN
   RETURN @l_status + '~' + @l_allocTo;
 END
 GO
+
+-------------------------------------------------------------------------------------------------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER FUNCTION [dbo].[INSTR] (@str VARCHAR(8000), @substr VARCHAR(255), @start INT, @occurrence INT)
+  RETURNS INT
+  AS
+  BEGIN
+    DECLARE @found INT = @occurrence,
+            @pos INT = @start;
+
+    WHILE 1=1
+    BEGIN
+        -- Find the next occurrence
+        SET @pos = CHARINDEX(@substr, @str, @pos);
+
+        -- Nothing found
+        IF @pos IS NULL OR @pos = 0
+            RETURN @pos;
+
+        -- The required occurrence found
+        IF @found = 1
+            BREAK;
+
+        -- Prepare to find another one occurrence
+        SET @found = @found - 1;
+        SET @pos = @pos + 1;
+    END
+
+    RETURN @pos;
+  END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_fn_incident_tobe_suppresed]    Script Date: 4-11-2023 21:13:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER FUNCTION [dbo].[PKG_INCIDENT_MANAGEMENT_fn_incident_tobe_suppresed](
+        @p_match_param VARCHAR(100)
+        )
+    RETURNS BIT
+AS
+BEGIN
+  DECLARE @l_param_Val VARCHAR(2000),
+          @l_count INT = 0
+  EXEC LOGIT 'fn_IncidentToBeSuppresed'
+
+  SELECT @l_param_Val = PARAM_VALUE
+    FROM TB_APPLICATION_PARAMS
+   WHERE PARAM_NAME = 'INCIDENT_MATCH_PARAM';
+
+   IF (@l_param_Val = 'CIF,TODAY')
+   BEGIN
+     SELECT @l_count = COUNT(*)
+       FROM tb_incident_rules_report
+      WHERE CIF           = SUBSTRING(@p_match_param, dbo.INSTR(@p_match_param, '~', 1, 2) + 1, dbo.INSTR(@p_match_param, '~', 1, 3) - dbo.INSTR(@p_match_param, '~', 1, 2) - 1)
+        AND REPORTED_DATE = SUBSTRING(@p_match_param, dbo.INSTR(@p_match_param, '~', 1, 4) + 1, LEN(@p_match_param) - dbo.INSTR(@p_match_param, '~', 1, 4))
+        AND SUBSTRING(MATCH_PARAM, 1, dbo.INSTR(@p_match_param, '~', 1, 3) - 1) = SUBSTRING(@p_match_param, 1, dbo.INSTR(@p_match_param, '~', 1, 3) - 1);
+   END
+   ELSE IF (@l_param_Val = 'ACC,TODAY')
+   BEGIN
+     SELECT @l_count = COUNT(*)
+       FROM tb_incident_rules_report
+      WHERE CIF           = SUBSTRING(@p_match_param, dbo.INSTR(@p_match_param, '~', 1, 2) + 1, dbo.INSTR(@p_match_param, '~', 1, 3) - dbo.INSTR(@p_match_param, '~', 1, 2) - 1)
+        AND REPORTED_DATE = SUBSTRING(@p_match_param, dbo.INSTR(@p_match_param, '~', 1, 4) + 1, LEN(@p_match_param) - dbo.INSTR(@p_match_param, '~', 1, 4))
+        AND SUBSTRING(MATCH_PARAM, 1, dbo.INSTR(@p_match_param, '~', 1, 4) - 1) = SUBSTRING(@p_match_param, 1, dbo.INSTR(@p_match_param, '~', 1, 4) - 1);
+   END
+
+   IF @l_count > 0
+   BEGIN
+     RETURN 'true';
+   END
+
+   RETURN 'false';
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_report_hist]    Script Date: 4-11-2023 22:28:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_report_hist](
+        @p_incident_no VARCHAR(50),
+        @p_recordset   VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'Inside PR_GET_INCIDENT_REPORT_HIST for incidnet: ' + @p_incident_no
+  EXEC LOGIT @l_log
+
+  BEGIN TRY
+  SELECT @p_recordset = (SELECT sr_no                                  AS 'srNo'
+                              , assigned_to                            AS 'assignedTo'
+                              , action_code                            AS 'reviewedBy' --25July
+                              , user_comment                           AS 'comment'
+                              , ROW_NUMBER() OVER(ORDER BY SR_NO DESC) AS 'ord_col'
+                           FROM TB_INCIDENT_RULES_REPORT_HIST
+                          WHERE incident_no = @p_incident_no
+                            FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                         );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 38 pr_get_incident_report_hist>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_action_list]    Script Date: 5-11-2023 00:15:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+--31May Starts
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_incident_action_list](
+        @p_current_user VARCHAR(200),
+        @p_incidentType VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'Inside PR_GET_INCIDENT_ACTION_LIST for incidnet: ' + @p_incidentType
+  EXEC LOGIT @l_log
+
+  BEGIN TRY
+    SELECT @p_recordset = (SELECT ACTION_CODE                             AS 'actionCode'
+                                , ACTION_DESC                             AS 'actionDesc'
+                                , ROW_NUMBER() OVER(ORDER BY ACTION_DESC) AS 'ord_col'
+                             FROM TB_INCIDENT_ACTION_MAP
+                            WHERE INCIDENT_TYPE = @p_incidentType
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
+  END TRY
+  BEGIN CATCH
+    SET @l_err_num = ERROR_NUMBER()
+    SET @l_err_msg = ERROR_MESSAGE()
+    SET @l_log = 'Line # 29 pr_get_incident_action_list>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+    EXEC LOGIT @l_log
+  END CATCH;
+END
+GO
+--31May Ends
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_assign_user_list]    Script Date: 5-11-2023 00:49:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_assign_user_list](
+        @p_incidentType VARCHAR(200),
+        @p_current_user VARCHAR(200),
+        @p_operation    VARCHAR(100),
+        @p_incidentNo   VARCHAR(50),--25July
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE
+    @l_branch      VARCHAR(3), --25July
+    @l_allocatedTo VARCHAR(100), --25July
+    @l_log VARCHAR(MAX)
+BEGIN
+  SET @l_log = 'p_incidentType:' + @p_incidentType + ' p_current_user:' + @p_current_user + ' p_operation:' + @p_operation
+  EXEC LOGIT @l_log
+
+  --25July starts
+  SELECT @l_branch = AC_BRANCH
+    FROM tb_incident_report
+   WHERE INCIDENT_NO = @p_incidentNo;
+
+  SELECT @l_allocatedTo = ALLOCATED_TO
+    FROM TB_WORKFLOW_DETAILS
+   WHERE INCIDENT_TYPE = @p_incidentType
+     AND OPERATION     = @p_operation
+     AND ACTION_BY IN (SELECT ROLE_ID
+                         FROM TB_USER_PROFILE
+                        WHERE USER_NAME = @p_current_user);
+
+  SET @l_log = 'l_branch: ' + @l_branch + ' l_allocatedTo: ' + @l_allocatedTo
+  EXEC LOGIT @l_log
+
+  IF (@l_allocatedTo <> 'BAMLCO')
+  --25July ends
+  BEGIN
+    SELECT @p_recordset = (SELECT USER_NAME AS 'userId'
+                                , FIRSTNAME AS 'userName'
+                             FROM TB_USER_PROFILE
+                            WHERE ROLE_ID IN (@l_allocatedTo)
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           );
+  END
+  ELSE
+  BEGIN
+    EXEC LOGIT 'get user for BAMLCO'
+    SELECT @p_recordset = (SELECT USER_NAME AS 'userId'
+                                , FIRSTNAME AS 'userName'
+                             FROM TB_USER_PROFILE
+                            WHERE ROLE_ID IN (@l_allocatedTo)
+                              AND BRANCH_CODE = @l_branch
+                              FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                           ); --25July
+  END --25July
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_attached_docs]    Script Date: 5-11-2023 01:30:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_attached_docs](
+        @p_incident_no  VARCHAR(100),
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(MAX) OUT
+        )
+AS
+  DECLARE @l_log VARCHAR(MAX), @l_err_num INT, @l_err_msg VARCHAR(MAX)
+BEGIN
+  EXEC LOGIT 'iNSIDE PR_GET_ATTATCHED_DOCS'
+  SET @l_log = 'Getting Incident Docs for ' + @p_incident_no
+  EXEC AUDIT_LOGIT @p_user = @p_current_user
+                 , @p_text = @l_log
+
+  BEGIN TRY
+  SELECT @p_recordset = (SELECT incident_no AS 'incidentNo'
+                              , (SELECT document_id   AS 'documentId'
+                                      , document_name AS 'documentName'
+                                      , CASE UPDATE_FLAG
+                                          WHEN 'U' THEN 'Uploaded'
+                                          WHEN 'D' THEN 'Marked Deletion'
+                                          ELSE 'Uploading'
+                                        END           AS 'docs'
+                                   FROM TB_INCIDENT_DOCUMENT_MAP
+                                  WHERE incident_no = @p_incident_no
+                                    FOR JSON AUTO, WITHOUT_ARRAY_WRAPPER
+                                 ) A
+                           FROM tb_incident_report
+                          WHERE incident_no = @p_incident_no
+                            FOR JSON AUTO
+                         );
+  END TRY
+  BEGIN CATCH
+      SET @l_err_num = ERROR_NUMBER()
+      SET @l_err_msg = ERROR_MESSAGE()
+      SET @l_log = 'Line # 40 pr_get_attatched_docs>>FAILED DUE TO: ' + @l_err_num + '-' + @l_err_msg
+      EXEC LOGIT @l_log
+    END CATCH;
+END
+GO
+
+-------------------------------------------------------------------------------------------------------------
+USE [tms]
+GO
+/****** Object:  StoredProcedure [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_doc_details]    Script Date: 5-11-2023 02:11:20 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PKG_INCIDENT_MANAGEMENT_pr_get_doc_details](
+        @p_docId        VARCHAR(100),
+        @p_current_user VARCHAR(200),
+        @p_recordset    VARCHAR(200) OUT
+        )
+AS
+BEGIN
+  SELECT @p_recordset = DOCUMENT_NAME
+    FROM tb_incident_document_map
+   WHERE DOCUMENT_ID = @p_docId;
+END
+GO
